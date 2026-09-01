@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>12</LangVersion>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <NoWarn>CA1416</NoWarn>
+
+    <!-- Version Information -->
+    <Version>1.0.0</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <Product>InputWatchDog</Product>
+    <Description>マウス・キーボード入力欠落の原因特定支援ツール</Description>
+    <Company>InputWatchDog Project</Company>
+    <Copyright>Copyright (c) 2026</Copyright>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- internal クラスをテストプロジェクトから直接検証できるようにする -->
+    <InternalsVisibleTo Include="InputWatchDog.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- tests\ 配下はテストプロジェクト側のコンパイル対象のため、本体プロジェクトからは除外する -->
+    <Compile Remove="tests\**" />
+    <EmbeddedResource Remove="tests\**" />
+    <None Remove="tests\**" />
+  </ItemGroup>
+
+</Project>
