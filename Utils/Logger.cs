@@ -13,13 +13,18 @@ namespace InputWatchDog.Utils;
 ///
 /// また、手動マーキング時に「発生前後のイベント」を取り出せるように、
 /// 直近一定時間分のイベントをメモリ上のリングバッファにも保持する。
+///
+/// Initialize()/Shutdown() は複数回呼び出しても安全になるよう設計している
+/// （BlockingCollectionはCompleteAdding後は二度と使えないため、
+///  Initialize()の都度キューとスレッドを作り直す）。
+/// これはテストで各ケースごとにログ出力先を切り替える際にも必要になる。
 /// </summary>
 internal static class Logger
 {
-    private static readonly BlockingCollection<InputEvent> _writeQueue = new();
     private static readonly ConcurrentQueue<InputEvent> _ringBuffer = new();
     private static readonly TimeSpan _ringBufferRetention = TimeSpan.FromSeconds(60);
 
+    private static BlockingCollection<InputEvent> _writeQueue = new();
     private static string _logDirectory = string.Empty;
     private static string? _currentLogDate;
     private static StreamWriter? _writer;
@@ -35,7 +40,15 @@ internal static class Logger
         Directory.CreateDirectory(_logDirectory);
         Directory.CreateDirectory(MarkReportDirectory);
 
-        _writerThread = new Thread(WriterLoop)
+        // 直前のライターが残っていれば後始末してから、キュー・スレッドを作り直す。
+        _writer?.Dispose();
+        _writer = null;
+        _currentLogDate = null;
+
+        var queue = new BlockingCollection<InputEvent>();
+        _writeQueue = queue;
+
+        _writerThread = new Thread(() => WriterLoop(queue))
         {
             IsBackground = true,
             Name = "InputWatchDog-LogWriter",
@@ -51,7 +64,16 @@ internal static class Logger
     {
         _ringBuffer.Enqueue(ev);
         TrimRingBuffer();
-        _writeQueue.Add(ev);
+
+        try
+        {
+            _writeQueue.Add(ev);
+        }
+        catch (InvalidOperationException)
+        {
+            // Shutdown() 済みのキューに対する記録要求。
+            // 終了処理中のイベント取りこぼしは許容し、握りつぶす。
+        }
     }
 
     /// <summary>
@@ -75,9 +97,9 @@ internal static class Logger
         }
     }
 
-    private static void WriterLoop()
+    private static void WriterLoop(BlockingCollection<InputEvent> queue)
     {
-        foreach (InputEvent ev in _writeQueue.GetConsumingEnumerable())
+        foreach (InputEvent ev in queue.GetConsumingEnumerable())
         {
             try
             {
