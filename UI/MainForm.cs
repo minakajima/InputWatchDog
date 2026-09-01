@@ -50,7 +50,9 @@ public sealed class MainForm : Form
 
         _notifyIcon = new NotifyIcon
         {
-            Icon = SystemIcons.Application,
+            // 実行ファイルに埋め込んだアイコン(Resources/AppIcon.ico)をトレイに表示する。
+            // 取得できない万一のケースに備え、既定アイコンへフォールバックする。
+            Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath) ?? SystemIcons.Application,
             Text = "InputWatchDog - 入力監視中",
             Visible = true,
             ContextMenuStrip = BuildContextMenu(),
